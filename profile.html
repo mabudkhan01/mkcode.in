@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - MKcode</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.4/babel.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-green-100 via-blue-100 to-green-200 min-h-screen flex items-center justify-center">
+    <div id="root"></div>
+    <script type="text/babel">
+const { useState, useEffect } = React;
+const API_BASE = 'http://localhost:5000/api';
+function getToken() { return localStorage.getItem('jwt'); }
+function removeToken() { localStorage.removeItem('jwt'); }
+
+const Toast = ({ message, onClose }) => {
+    if (!message) return null;
+    useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [message]);
+    return (
+        <div className="fixed top-6 right-6 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-fade-in-up flex items-center gap-2">
+            <i className="fas fa-check-circle"></i> {message}
+        </div>
+    );
+};
+
+const socialIcons = [
+    { icon: 'fab fa-github', key: 'github', placeholder: 'GitHub URL' },
+    { icon: 'fab fa-linkedin', key: 'linkedin', placeholder: 'LinkedIn URL' },
+    { icon: 'fab fa-twitter', key: 'twitter', placeholder: 'Twitter URL' },
+];
+
+const SettingsForm = ({ user, onUpdate, onToast }) => {
+    const [form, setForm] = React.useState({
+        name: user.name,
+        email: user.email,
+        password: '',
+        bio: user.bio || '',
+        ...Object.fromEntries(socialIcons.map(s => [s.key, user[s.key] || '']))
+    });
+    const [msg, setMsg] = React.useState('');
+    const [loading, setLoading] = React.useState(false);
+    const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
+    const handleSubmit = async e => {
+        e.preventDefault();
+        setLoading(true);
+        setMsg('');
+        try {
+            const token = getToken();
+            const res = await fetch(`${API_BASE}/profile`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({
+                    name: form.name,
+                    email: form.email,
+                    password: form.password ? form.password : undefined,
+                    bio: form.bio,
+                    ...Object.fromEntries(socialIcons.map(s => [s.key, form[s.key]]))
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setMsg('Profile updated!');
+                onUpdate(data);
+                setForm({ ...form, password: '' });
+                onToast && onToast('Profile updated successfully!');
+            } else {
+                setMsg(data.message || 'Update failed');
+            }
+        } catch {
+            setMsg('Network error');
+        }
+        setLoading(false);
+    };
+    return (
+        <form onSubmit={handleSubmit} className="space-y-6 mt-8 animate-fade-in-up">
+            <div>
+                <label className="block mb-2 font-semibold">Name</label>
+                <input type="text" name="name" value={form.name} onChange={handleChange} required className="w-full p-3 border rounded" />
+            </div>
+            <div>
+                <label className="block mb-2 font-semibold">Email</label>
+                <input type="email" name="email" value={form.email} onChange={handleChange} required className="w-full p-3 border rounded" />
+            </div>
+            <div>
+                <label className="block mb-2 font-semibold">Bio</label>
+                <textarea name="bio" value={form.bio} onChange={handleChange} className="w-full p-3 border rounded" placeholder="Tell us about yourself..." />
+            </div>
+            <div>
+                <label className="block mb-2 font-semibold">New Password (optional)</label>
+                <input type="password" name="password" value={form.password} onChange={handleChange} className="w-full p-3 border rounded" placeholder="Leave blank to keep current password" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {socialIcons.map(s => (
+                    <div key={s.key}>
+                        <label className="block mb-2 font-semibold"><i className={s.icon + ' mr-2'}></i>{s.key.charAt(0).toUpperCase() + s.key.slice(1)}</label>
+                        <input type="url" name={s.key} value={form[s.key]} onChange={handleChange} className="w-full p-3 border rounded" placeholder={s.placeholder} />
+                    </div>
+                ))}
+            </div>
+            {msg && <div className="text-green-600 text-center">{msg}</div>}
+            <button type="submit" className="w-full bg-blue-500 text-white py-3 rounded font-bold hover:bg-blue-600 transition-all" disabled={loading}>
+                {loading ? 'Updating...' : 'Update Profile'}
+            </button>
+        </form>
+    );
+};
+
+const Profile = () => {
+    const [user, setUser] = useState(null);
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [showSettings, setShowSettings] = useState(false);
+    const [avatar, setAvatar] = useState(null);
+    const [avatarUrl, setAvatarUrl] = useState('');
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [activity, setActivity] = useState({ lastLogin: '', lastUpdate: '' });
+    const [showBioEdit, setShowBioEdit] = useState(false);
+    const [toastMsg, setToastMsg] = useState('');
+
+    useEffect(() => {
+        const token = getToken();
+        if (!token) {
+            window.location.href = 'login.html';
+            return;
+        }
+        fetch(`${API_BASE}/profile`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+        .then(res => res.ok ? res.json() : Promise.reject(res))
+        .then(data => {
+            setUser(data);
+            setAvatarUrl(data.avatarUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(data.name || 'User'));
+            setActivity({
+                lastLogin: data.lastLogin || 'Unknown',
+                lastUpdate: data.updatedAt || 'Unknown',
+            });
+        })
+        .catch(() => {
+            setError('Session expired or unauthorized. Please login again.');
+            setTimeout(() => {
+                removeToken();
+                window.location.href = 'login.html';
+            }, 1500);
+        })
+        .finally(() => setLoading(false));
+    }, []);
+
+    const handleLogout = () => {
+        removeToken();
+        window.location.href = 'login.html';
+    };
+
+    const handleAvatarChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setAvatar(file);
+        setAvatarUrl(URL.createObjectURL(file));
+        const token = getToken();
+        const formData = new FormData();
+        formData.append('avatar', file);
+        try {
+            const res = await fetch(`${API_BASE}/profile/avatar`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                body: formData
+            });
+            const data = await res.json();
+            if (res.ok && data.avatarUrl) {
+                setAvatarUrl(data.avatarUrl);
+                setToastMsg('Avatar updated!');
+            }
+        } catch {}
+    };
+
+    // Password change modal
+    const PasswordModal = ({ open, onClose }) => {
+        const [oldPass, setOldPass] = useState('');
+        const [newPass, setNewPass] = useState('');
+        const [msg, setMsg] = useState('');
+        const [loading, setLoading] = useState(false);
+        if (!open) return null;
+        const handleSubmit = async (e) => {
+            e.preventDefault();
+            setLoading(true);
+            setMsg('');
+            const token = getToken();
+            try {
+                const res = await fetch(`${API_BASE}/profile/password`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ oldPassword: oldPass, newPassword: newPass })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    setMsg('Password changed successfully!');
+                    setOldPass(''); setNewPass('');
+                    setToastMsg('Password changed!');
+                } else {
+                    setMsg(data.message || 'Error changing password');
+                }
+            } catch {
+                setMsg('Network error');
+            }
+            setLoading(false);
+        };
+        return (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in-up">
+                <div className="bg-white rounded-xl p-8 max-w-md w-full relative">
+                    <button onClick={onClose} className="absolute top-4 right-4 text-gray-700"><i className="fas fa-times"></i></button>
+                    <h2 className="text-2xl font-bold mb-4">Change Password</h2>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block mb-1 font-semibold">Current Password</label>
+                            <input type="password" value={oldPass} onChange={e => setOldPass(e.target.value)} required className="w-full p-2 border rounded" />
+                        </div>
+                        <div>
+                            <label className="block mb-1 font-semibold">New Password</label>
+                            <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} required className="w-full p-2 border rounded" />
+                        </div>
+                        {msg && <div className="text-green-600 text-center">{msg}</div>}
+                        <button type="submit" className="w-full bg-blue-500 text-white py-2 rounded font-bold hover:bg-blue-600 transition-all" disabled={loading}>{loading ? 'Changing...' : 'Change Password'}</button>
+                    </form>
+                </div>
+            </div>
+        );
+    };
+
+    if (loading) return <div className="text-center text-xl text-green-600">Loading profile...</div>;
+    if (error) return <div className="text-center text-red-500">{error}</div>;
+    if (!user) return null;
+
+    // Banner/cover image
+    const coverUrl = user.coverUrl || 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80';
+    const role = user.role || 'Member';
+
+    return (
+        <div className="max-w-xl w-full bg-white rounded-3xl shadow-2xl mx-2 relative overflow-hidden animate-fade-in-up">
+            <div className="relative h-40 md:h-56 w-full">
+                <img src={coverUrl} alt="cover" className="w-full h-full object-cover object-center" />
+                <div className="absolute inset-0 bg-gradient-to-t from-green-700/60 to-transparent"></div>
+                <div className="absolute top-4 right-4 bg-white/80 rounded-full px-4 py-1 text-green-700 font-bold shadow text-xs md:text-sm flex items-center gap-2">
+                    <i className="fas fa-user-shield"></i> {role}
+                </div>
+            </div>
+            <div className="px-6 pb-8 -mt-16 flex flex-col items-center">
+                <div className="relative group mb-2">
+                    <img src={avatarUrl} alt="avatar" className="w-28 h-28 rounded-full border-4 border-green-400 shadow-lg object-cover bg-white" />
+                    <label className="absolute bottom-0 right-0 bg-green-500 text-white rounded-full p-2 cursor-pointer shadow-lg hover:bg-green-600 transition-all" title="Change avatar">
+                        <i className="fas fa-camera"></i>
+                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                    </label>
+                </div>
+                <div className="text-2xl font-bold mt-2 text-gray-900">{user.name}</div>
+                <div className="text-gray-600 mb-1">{user.email}</div>
+                <div className="text-green-600 text-xs font-semibold mb-2">{role}</div>
+                <div className="w-full text-center">
+                    {showBioEdit ? (
+                        <form onSubmit={async e => {
+                            e.preventDefault();
+                            setShowBioEdit(false);
+                            await fetch(`${API_BASE}/profile`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+                                body: JSON.stringify({ bio: e.target.bio.value })
+                            });
+                            setUser(u => ({ ...u, bio: e.target.bio.value }));
+                            setToastMsg('Bio updated!');
+                        }}>
+                            <textarea name="bio" defaultValue={user.bio || ''} className="w-full p-2 border rounded mb-2" rows={2} />
+                            <button type="submit" className="bg-green-500 text-white px-4 py-1 rounded mr-2">Save</button>
+                            <button type="button" className="bg-gray-200 px-4 py-1 rounded" onClick={() => setShowBioEdit(false)}>Cancel</button>
+                        </form>
+                    ) : (
+                        <div className="text-gray-700 mb-2 min-h-[32px]">{user.bio || <span className="italic text-gray-400">No bio yet.</span>} <button className="ml-2 text-xs text-blue-500 hover:underline" onClick={() => setShowBioEdit(true)}><i className="fas fa-pen"></i> Edit</button></div>
+                    )}
+                </div>
+                <div className="flex gap-3 mb-4">
+                    {socialIcons.map(s => user[s.key] && (
+                        <a key={s.key} href={user[s.key]} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-green-500 text-2xl transition-all"><i className={s.icon}></i></a>
+                    ))}
+                </div>
+                <div className="flex flex-col gap-2 mb-4 text-sm text-gray-500 bg-gray-100 rounded-lg p-4 w-full">
+                    <div><i className="fas fa-sign-in-alt mr-2 text-green-400"></i>Last Login: <span className="font-medium">{activity.lastLogin}</span></div>
+                    <div><i className="fas fa-history mr-2 text-blue-400"></i>Last Profile Update: <span className="font-medium">{activity.lastUpdate}</span></div>
+                </div>
+                <button onClick={() => setShowSettings(s => !s)} className="w-full bg-gray-200 text-green-700 py-2 rounded font-bold hover:bg-green-100 transition-all mb-2">
+                    {showSettings ? 'Hide Settings' : 'Edit Profile'}
+                </button>
+                <button onClick={() => setShowPasswordModal(true)} className="w-full bg-blue-100 text-blue-700 py-2 rounded font-bold hover:bg-blue-200 transition-all mb-2">
+                    Change Password
+                </button>
+                <a href="index2.html" className="block w-full text-center bg-green-500 text-white py-2 rounded font-bold hover:bg-green-600 transition-all mb-2">Back to Dashboard</a>
+                {showSettings && <SettingsForm user={user} onUpdate={setUser} onToast={setToastMsg} />}
+                <button onClick={handleLogout} className="w-full bg-red-500 text-white py-3 rounded font-bold hover:bg-red-600 transition-all mt-4">
+                    Logout
+                </button>
+                <PasswordModal open={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
+            </div>
+            <Toast message={toastMsg} onClose={() => setToastMsg('')} />
+        </div>
+    );
+};
+ReactDOM.render(<Profile />, document.getElementById('root'));
+    </script>
+</body>
+</html>

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - MKcode</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.4/babel.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-green-100 via-blue-100 to-green-200 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+const { useState, useEffect } = React;
+const API_BASE = 'http://localhost:5000/api';
+function getToken() { return localStorage.getItem('jwt'); }
+function removeToken() { localStorage.removeItem('jwt'); }
+
+const UserDetailsModal = ({ user, onClose, onPromote, onDemote, onDelete, onResetPassword }) => {
+    if (!user) return null;
+    return (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-8 max-w-lg w-full mx-2 relative">
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-700"><i className="fas fa-times"></i></button>
+                <h2 className="text-2xl font-bold mb-4 text-green-600">User Details</h2>
+                <div className="mb-4">
+                    <div className="mb-2"><b>Name:</b> {user.name}</div>
+                    <div className="mb-2"><b>Email:</b> {user.email}</div>
+                    <div className="mb-2"><b>Role:</b> {user.role || 'user'}</div>
+                    <div className="mb-2"><b>ID:</b> <span className="text-xs text-gray-500">{user._id}</span></div>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                    <button onClick={() => { onDelete(user._id); onClose(); }} className="bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600">Delete</button>
+                    {user.role !== 'admin' && <button onClick={() => { onPromote(user._id); onClose(); }} className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600">Promote</button>}
+                    {user.role === 'admin' && <button onClick={() => { onDemote(user._id); onClose(); }} className="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600">Demote</button>}
+                    <button onClick={() => { onResetPassword(user._id); onClose(); }} className="bg-gray-500 text-white px-3 py-1 rounded text-xs hover:bg-gray-600">Reset Password</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const AdminDashboard = () => {
+    const [tab, setTab] = useState('users');
+    const [users, setUsers] = useState([]);
+    const [messages, setMessages] = useState([]);
+    const [subs, setSubs] = useState([]);
+    const [logs, setLogs] = useState([]);
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [roleFilter, setRoleFilter] = useState('all');
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [logActionFilter, setLogActionFilter] = useState('all');
+    const [logAdminFilter, setLogAdminFilter] = useState('all');
+
+    useEffect(() => {
+        const token = getToken();
+        if (!token) {
+            window.location.href = 'login.html';
+            return;
+        }
+        setLoading(true);
+        setError('');
+        Promise.all([
+            fetch(`${API_BASE}/admin/users`, { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch(`${API_BASE}/admin/messages`, { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch(`${API_BASE}/admin/newsletter`, { headers: { 'Authorization': 'Bearer ' + token } })
+        ]).then(async ([u, m, n]) => {
+            if (!u.ok || !m.ok || !n.ok) throw new Error('Unauthorized or not admin');
+            setUsers(await u.json());
+            setMessages(await m.json());
+            setSubs(await n.json());
+        }).catch(() => {
+            setError('Unauthorized. Only admin can access this page.');
+            setTimeout(() => { removeToken(); window.location.href = 'login.html'; }, 2000);
+        }).finally(() => setLoading(false));
+    }, []);
+    useEffect(() => {
+        const token = getToken();
+        if (!token) return;
+        fetch(`${API_BASE}/admin/activity-logs`, { headers: { 'Authorization': 'Bearer ' + token } })
+            .then(res => res.ok ? res.json() : [])
+            .then(setLogs)
+            .catch(() => {});
+    }, []);
+
+    const token = getToken();
+    // Add user management actions
+    const handleDeleteUser = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this user?')) return;
+        try {
+            const res = await fetch(`${API_BASE}/admin/user/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (res.ok) setUsers(users.filter(u => u._id !== id));
+            else alert(data.message || 'Delete failed');
+        } catch {
+            alert('Network error');
+        }
+    };
+    const handlePromoteUser = async (id) => {
+        if (!window.confirm('Promote this user to admin?')) return;
+        try {
+            const res = await fetch(`${API_BASE}/admin/promote`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ userId: id })
+            });
+            const data = await res.json();
+            if (res.ok) setUsers(users.map(u => u._id === id ? { ...u, role: 'admin' } : u));
+            else alert(data.message || 'Promote failed');
+        } catch {
+            alert('Network error');
+        }
+    };
+    const handleDemoteUser = async (id) => {
+        if (!window.confirm('Demote this admin to user?')) return;
+        try {
+            const res = await fetch(`${API_BASE}/admin/demote`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ userId: id })
+            });
+            const data = await res.json();
+            if (res.ok) setUsers(users.map(u => u._id === id ? { ...u, role: 'user' } : u));
+            else alert(data.message || 'Demote failed');
+        } catch {
+            alert('Network error');
+        }
+    };
+    const handleResetPassword = async (id, passOverride) => {
+        const newPass = passOverride || prompt('Enter new password for this user:');
+        if (!newPass || newPass.length < 6) return alert('Password must be at least 6 characters.');
+        try {
+            const res = await fetch(`${API_BASE}/admin/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ userId: id, password: newPass })
+            });
+            const data = await res.json();
+            if (res.ok && !passOverride) alert('Password reset!');
+            else if (!res.ok) alert(data.message || 'Reset failed');
+        } catch {
+            alert('Network error');
+        }
+    };
+    const handleSearch = async (e) => {
+        e.preventDefault();
+        if (!search.trim()) return;
+        try {
+            const res = await fetch(`${API_BASE}/admin/search-users?q=${encodeURIComponent(search)}`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            setSearchResults(data);
+        } catch {
+            alert('Network error');
+        }
+    };
+    const handleExport = (type) => {
+        window.open(`${API_BASE}/admin/export/${type}?token=${getToken()}`, '_blank');
+    };
+
+    // Filtering logic
+    const filteredUsers = (searchResults.length > 0 ? searchResults : users).filter(u => roleFilter === 'all' ? true : u.role === roleFilter);
+
+    // Unique actions and admins for log filters
+    const logActions = Array.from(new Set(logs.map(l => l.action))).sort();
+    const logAdmins = Array.from(new Set(logs.map(l => l.adminId && l.adminId.email ? l.adminId.email : 'N/A')));
+
+    // Filtered logs
+    const filteredLogs = logs.filter(l =>
+        (logActionFilter === 'all' || l.action === logActionFilter) &&
+        (logAdminFilter === 'all' || (l.adminId && l.adminId.email === logAdminFilter))
+    );
+
+    // Export selected users as CSV
+    const exportSelectedUsers = () => {
+        if (!selectedIds.length) return alert('No users selected.');
+        const selected = filteredUsers.filter(u => selectedIds.includes(u._id));
+        const csv = [
+            ['Name','Email','Role','ID'],
+            ...selected.map(u => [u.name, u.email, u.role || 'user', u._id])
+        ].map(row => row.map(field => '"'+String(field).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `selected-users-${Date.now()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    };
+
+    // Bulk actions
+    const handleSelectAll = (e) => {
+        if (e.target.checked) setSelectedIds(filteredUsers.map(u => u._id));
+        else setSelectedIds([]);
+    };
+    const handleSelectUser = (id) => {
+        setSelectedIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]);
+    };
+    const bulkDelete = async () => {
+        if (!window.confirm('Delete selected users?')) return;
+        for (const id of selectedIds) await handleDeleteUser(id);
+        setSelectedIds([]);
+    };
+    const bulkPromote = async () => {
+        if (!window.confirm('Promote selected users to admin?')) return;
+        for (const id of selectedIds) await handlePromoteUser(id);
+        setSelectedIds([]);
+    };
+    const bulkDemote = async () => {
+        if (!window.confirm('Demote selected admins to user?')) return;
+        for (const id of selectedIds) await handleDemoteUser(id);
+        setSelectedIds([]);
+    };
+    const bulkResetPassword = async () => {
+        const newPass = prompt('Enter new password for selected users:');
+        if (!newPass || newPass.length < 6) return alert('Password must be at least 6 characters.');
+        if (!window.confirm('Reset password for selected users?')) return;
+        for (const id of selectedIds) await handleResetPassword(id, newPass);
+        setSelectedIds([]);
+    };
+
+    if (loading) return <div className="text-center text-xl text-green-600 mt-20">Loading admin data...</div>;
+    if (error) return <div className="text-center text-red-500 mt-20">{error}</div>;
+
+    return (
+        <div className="max-w-5xl mx-auto py-12">
+            <h1 className="text-4xl font-bold text-center text-green-700 mb-8">Admin Dashboard</h1>
+            <div className="flex justify-center gap-4 mb-8 flex-wrap">
+                <button onClick={() => setTab('users')} className={`px-6 py-2 rounded-full font-bold ${tab==='users'?'bg-green-500 text-white':'bg-white text-green-700 border border-green-300'}`}>Users</button>
+                <button onClick={() => setTab('messages')} className={`px-6 py-2 rounded-full font-bold ${tab==='messages'?'bg-blue-500 text-white':'bg-white text-blue-700 border border-blue-300'}`}>Messages</button>
+                <button onClick={() => setTab('subs')} className={`px-6 py-2 rounded-full font-bold ${tab==='subs'?'bg-yellow-500 text-white':'bg-white text-yellow-700 border border-yellow-300'}`}>Newsletter</button>
+                <button onClick={() => setTab('logs')} className={`px-6 py-2 rounded-full font-bold ${tab==='logs'?'bg-gray-800 text-white':'bg-white text-gray-800 border border-gray-400'}`}>Activity Logs</button>
+                <button onClick={() => { removeToken(); window.location.href = 'login.html'; }} className="px-6 py-2 rounded-full font-bold bg-red-500 text-white ml-8">Logout</button>
+            </div>
+            <div className="flex gap-4 mb-8 flex-wrap">
+                <button onClick={() => handleExport('users')} className="bg-green-500 text-white px-4 py-2 rounded">Export Users CSV</button>
+                <button onClick={() => handleExport('messages')} className="bg-blue-500 text-white px-4 py-2 rounded">Export Messages CSV</button>
+                <button onClick={() => handleExport('newsletter')} className="bg-yellow-500 text-white px-4 py-2 rounded">Export Newsletter CSV</button>
+            </div>
+            {tab === 'users' && (
+                <div>
+                    <h2 className="text-2xl font-bold mb-4">All Users</h2>
+                    <form onSubmit={handleSearch} className="mb-4 flex gap-2 flex-wrap items-center">
+                        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or email" className="p-2 border rounded w-64" />
+                        <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded">Search</button>
+                        <button type="button" className="bg-gray-300 text-gray-700 px-4 py-2 rounded" onClick={() => { setSearch(''); setSearchResults([]); }}>Clear</button>
+                        <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="ml-4 p-2 border rounded">
+                            <option value="all">All Roles</option>
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </form>
+                    {selectedIds.length > 0 && (
+                        <div className="mb-4 flex gap-2 flex-wrap items-center bg-gray-100 p-3 rounded shadow">
+                            <span className="font-semibold">Bulk actions for {selectedIds.length} selected:</span>
+                            <button onClick={bulkDelete} className="bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600">Delete</button>
+                            <button onClick={bulkPromote} className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600">Promote</button>
+                            <button onClick={bulkDemote} className="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600">Demote</button>
+                            <button onClick={bulkResetPassword} className="bg-gray-500 text-white px-3 py-1 rounded text-xs hover:bg-gray-600">Reset Password</button>
+                            <button onClick={exportSelectedUsers} className="bg-green-700 text-white px-3 py-1 rounded text-xs hover:bg-green-800">Export Selected CSV</button>
+                            <button onClick={() => setSelectedIds([])} className="bg-gray-300 text-gray-700 px-3 py-1 rounded text-xs">Clear</button>
+                        </div>
+                    )}
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full bg-white rounded shadow">
+                            <thead>
+                                <tr className="bg-green-100">
+                                    <th className="py-2 px-4"><input type="checkbox" checked={selectedIds.length === filteredUsers.length && filteredUsers.length > 0} onChange={handleSelectAll} /></th>
+                                    <th className="py-2 px-4">Name</th>
+                                    <th className="py-2 px-4">Email</th>
+                                    <th className="py-2 px-4">Role</th>
+                                    <th className="py-2 px-4">ID</th>
+                                    <th className="py-2 px-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredUsers.map(u => (
+                                    <tr key={u._id} className="border-b">
+                                        <td className="py-2 px-4"><input type="checkbox" checked={selectedIds.includes(u._id)} onChange={() => handleSelectUser(u._id)} /></td>
+                                        <td className="py-2 px-4">
+                                            <button className="text-green-700 underline hover:text-green-900" onClick={() => setSelectedUser(u)}>{u.name}</button>
+                                        </td>
+                                        <td className="py-2 px-4">
+                                            <button className="text-blue-700 underline hover:text-blue-900" onClick={() => setSelectedUser(u)}>{u.email}</button>
+                                        </td>
+                                        <td className="py-2 px-4">{u.role || 'user'}</td>
+                                        <td className="py-2 px-4 text-xs text-gray-500">{u._id}</td>
+                                        <td className="py-2 px-4 flex gap-2 flex-wrap">
+                                            <button onClick={() => handleDeleteUser(u._id)} className="bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600">Delete</button>
+                                            {u.role !== 'admin' && <button onClick={() => handlePromoteUser(u._id)} className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600">Promote</button>}
+                                            {u.role === 'admin' && <button onClick={() => handleDemoteUser(u._id)} className="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600">Demote</button>}
+                                            <button onClick={() => handleResetPassword(u._id)} className="bg-gray-500 text-white px-3 py-1 rounded text-xs hover:bg-gray-600">Reset Password</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <UserDetailsModal
+                        user={selectedUser}
+                        onClose={() => setSelectedUser(null)}
+                        onPromote={handlePromoteUser}
+                        onDemote={handleDemoteUser}
+                        onDelete={handleDeleteUser}
+                        onResetPassword={handleResetPassword}
+                    />
+                </div>
+            )}
+            {tab === 'messages' && (
+                <div>
+                    <h2 className="text-2xl font-bold mb-4">Contact Messages</h2>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full bg-white rounded shadow">
+                            <thead>
+                                <tr className="bg-blue-100">
+                                    <th className="py-2 px-4">Name</th>
+                                    <th className="py-2 px-4">Email</th>
+                                    <th className="py-2 px-4">Subject</th>
+                                    <th className="py-2 px-4">Message</th>
+                                    <th className="py-2 px-4">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {messages.map(m => (
+                                    <tr key={m._id} className="border-b">
+                                        <td className="py-2 px-4">{m.name}</td>
+                                        <td className="py-2 px-4">{m.email}</td>
+                                        <td className="py-2 px-4">{m.subject}</td>
+                                        <td className="py-2 px-4 max-w-xs truncate" title={m.message}>{m.message}</td>
+                                        <td className="py-2 px-4 text-xs text-gray-500">{new Date(m.createdAt || m.date).toLocaleString()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+            {tab === 'subs' && (
+                <div>
+                    <h2 className="text-2xl font-bold mb-4">Newsletter Subscribers</h2>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full bg-white rounded shadow">
+                            <thead>
+                                <tr className="bg-yellow-100">
+                                    <th className="py-2 px-4">Email</th>
+                                    <th className="py-2 px-4">ID</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {subs.map(s => (
+                                    <tr key={s._id} className="border-b">
+                                        <td className="py-2 px-4">{s.email}</td>
+                                        <td className="py-2 px-4 text-xs text-gray-500">{s._id}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+            {tab === 'logs' && (
+                <div>
+                    <h2 className="text-2xl font-bold mb-4">Activity Logs</h2>
+                    <div className="mb-4 flex gap-2 flex-wrap items-center">
+                        <label className="font-semibold">Filter by Action:</label>
+                        <select value={logActionFilter} onChange={e => setLogActionFilter(e.target.value)} className="p-2 border rounded">
+                            <option value="all">All</option>
+                            {logActions.map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                        <label className="font-semibold ml-4">Filter by Admin:</label>
+                        <select value={logAdminFilter} onChange={e => setLogAdminFilter(e.target.value)} className="p-2 border rounded">
+                            <option value="all">All</option>
+                            {logAdmins.map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full bg-white rounded shadow">
+                            <thead>
+                                <tr className="bg-gray-200">
+                                    <th className="py-2 px-4">Admin</th>
+                                    <th className="py-2 px-4">Action</th>
+                                    <th className="py-2 px-4">Target</th>
+                                    <th className="py-2 px-4">Details</th>
+                                    <th className="py-2 px-4">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredLogs.map(log => (
+                                    <tr key={log._id} className="border-b">
+                                        <td className="py-2 px-4">{log.adminId ? `${log.adminId.name} (${log.adminId.email})` : 'N/A'}</td>
+                                        <td className="py-2 px-4">{log.action}</td>
+                                        <td className="py-2 px-4">{log.target}</td>
+                                        <td className="py-2 px-4 text-xs max-w-xs truncate" title={JSON.stringify(log.details)}>{JSON.stringify(log.details)}</td>
+                                        <td className="py-2 px-4 text-xs text-gray-500">{new Date(log.date).toLocaleString()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+ReactDOM.render(<AdminDashboard />, document.getElementById('root'));
+    </script>
+</body>
+</html>

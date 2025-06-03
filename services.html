@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MKcode - Our Services</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.4/babel.min.js"></script>
+    <link rel="icon" href="mkcode.jpeg">
+    <style>
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up { animation: fadeInUp 0.8s ease-out forwards; }
+        .modal-overlay { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+const { useState, useEffect } = React;
+
+// --- API utility functions ---
+const API_BASE = 'http://localhost:5000/api';
+function saveToken(token) { localStorage.setItem('jwt', token); }
+function getToken() { return localStorage.getItem('jwt'); }
+function removeToken() { localStorage.removeItem('jwt'); }
+
+// --- Header with JWT/profile integration (copied from index2.html) ---
+const Header = () => {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isScrolled, setIsScrolled] = useState(false);
+    const [user, setUser] = useState(null);
+
+    useEffect(() => {
+        const handleScroll = () => setIsScrolled(window.scrollY > 50);
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    useEffect(() => {
+        const token = getToken();
+        if (token) {
+            fetch(`${API_BASE}/profile`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (data && data.email) {
+                    setUser(data);
+                }
+            })
+            .catch(() => {});
+        }
+    }, []);
+
+    const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+    const toggleProfile = () => setIsProfileOpen(!isProfileOpen);
+
+    const handleProfileMenuClick = (item) => {
+        if (item === 'Login') {
+            window.location.href = 'login.html';
+        } else if (item === 'Profile') {
+            window.location.href = 'profile.html';
+        } else if (item === 'Logout') {
+            removeToken();
+            setUser(null);
+            setIsProfileOpen(false);
+            window.location.href = 'services.html';
+        } else {
+            setIsProfileOpen(false);
+        }
+    };
+
+    const navItems = [
+        { href: "index2.html#home", label: "Home" },
+        { href: "index2.html#about", label: "About" },
+        { href: "services.html", label: "Services" },
+        { href: "index2.html#portfolio", label: "Portfolio" },
+        { href: "index2.html#careers", label: "Careers" },
+        { href: "index2.html#contact", label: "Contact" },
+    ];
+
+    return (
+        <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white/95 shadow-2xl' : 'bg-transparent'}`} style={{backdropFilter:'blur(8px)'}}>
+            <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+                <a href="index2.html#home" className="flex items-center space-x-2 group">
+                    <img src="mkcode.jpeg" alt="MKcode Logo" className="w-12 h-12 rounded-full shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300" />
+                    <span className="font-extrabold text-2xl text-green-500 tracking-wider drop-shadow-lg group-hover:text-blue-500 transition-colors duration-300">MKcode</span>
+                </a>
+                <nav className="hidden lg:flex items-center space-x-6">
+                    {navItems.map((item, idx) => (
+                        <a key={item.href} href={item.href} className={`relative px-3 py-2 font-semibold text-lg transition-all duration-300 ${isScrolled ? 'text-gray-800 dark:text-gray-100' : 'text-gray-700 dark:text-gray-200'} hover:text-green-500 group`} style={{textShadow:'0 2px 8px rgba(34,197,94,0.08)'}}>
+                            <span className="inline-block transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110">
+                                {item.label}
+                            </span>
+                            <span className="absolute left-1/2 -bottom-1 w-0 h-1 bg-gradient-to-r from-green-400 to-blue-400 rounded-full group-hover:w-full transition-all duration-300" style={{transform:'translateX(-50%)'}}></span>
+                        </a>
+                    ))}
+                    <a href="index2.html#contact" className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-2 rounded-full shadow-lg hover:from-blue-500 hover:to-green-500 hover:scale-105 transition-all transform hover:-translate-y-1 font-bold animate-float">
+                        Get Started
+                    </a>
+                </nav>
+                <div className="flex items-center space-x-4">
+                    <div className="relative">
+                        <button
+                            onClick={toggleProfile}
+                            className="text-gray-700 text-xl hover:text-green-500 hover:scale-110 transition-transform duration-300"
+                            aria-label="Toggle profile menu"
+                            aria-expanded={isProfileOpen}
+                        >
+                            <i className="fas fa-user-circle"></i>
+                        </button>
+                        {/* Profile Dropdown */}
+                        {isProfileOpen && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-2xl animate-fade-in-up border border-green-100">
+                                {user ? (
+                                    ['Profile', 'Logout'].map(item => (
+                                        <a
+                                            key={item}
+                                            href={item === 'Profile' ? 'profile.html' : undefined}
+                                            onClick={() => handleProfileMenuClick(item)}
+                                            className="block px-4 py-2 text-gray-700 hover:bg-gradient-to-r hover:from-green-500 hover:to-blue-500 hover:text-white rounded transition-all"
+                                        >
+                                            <i className={`fas fa-${item === 'Profile' ? 'user' : 'sign-out-alt'} mr-2`}></i>{item}
+                                        </a>
+                                    ))
+                                ) : (
+                                    ['Login'].map(item => (
+                                        <a
+                                            key={item}
+                                            href="login.html"
+                                            onClick={() => handleProfileMenuClick(item)}
+                                            className="block px-4 py-2 text-gray-700 hover:bg-gradient-to-r hover:from-green-500 hover:to-blue-500 hover:text-white rounded transition-all"
+                                        >
+                                            <i className="fas fa-sign-in-alt mr-2"></i>{item}
+                                        </a>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        onClick={toggleMenu}
+                        className="lg:hidden text-gray-700 text-2xl hover:text-green-500 hover:scale-125 transition-transform duration-300"
+                        aria-label="Toggle mobile menu"
+                    >
+                        <i className={`fas ${isMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>
+                    </button>
+                </div>
+            </div>
+
+            {/* Enhanced Menu Drawer */}
+            <div className={`fixed top-0 left-0 h-full w-80 max-w-[90vw] bg-white dark:bg-gray-900 shadow-2xl z-[100] transform transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`} style={{boxShadow:'0 0 40px 0 rgba(0,0,0,0.2)'}}>
+                <div className="p-6 flex flex-col h-full">
+                    <div className="flex justify-between items-center mb-8">
+                        <a href="index2.html#home" className="flex items-center space-x-2">
+                            <img src="mkcode.jpeg" alt="MKcode Logo" className="w-10 h-10" />
+                            <span className="font-bold text-xl text-green-500">MKcode</span>
+                        </a>
+                        <button onClick={toggleMenu} className="text-gray-700 dark:text-gray-200 text-2xl" aria-label="Close menu">
+                            <i className="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <nav className="flex flex-col space-y-6 flex-1">
+                        {navItems.map(item => (
+                            <a key={item.href} href={item.href} className="text-lg text-gray-700 dark:text-gray-200 hover:text-green-500 font-medium transition-colors" onClick={toggleMenu}>
+                                {item.label}
+                            </a>
+                        ))}
+                        <a href="index2.html#contact" className="bg-green-500 text-white px-6 py-2 rounded-full text-center mt-4 hover:bg-green-600 transition-all" onClick={toggleMenu}>Get Started</a>
+                    </nav>
+                    <div className="mt-8 flex gap-4 justify-center">
+                        {['facebook-f', 'twitter', 'linkedin-in', 'instagram'].map(icon => (
+                            <a key={icon} href="#" className="w-9 h-9 bg-gray-200 dark:bg-gray-800 rounded-full flex items-center justify-center hover:bg-green-500 hover:text-white transition-all">
+                                <i className={`fab fa-${icon}`}></i>
+                            </a>
+                        ))}
+                    </div>
+                </div>
+            </div>
+            {/* Overlay for menu drawer */}
+            <div className={`fixed inset-0 bg-black/40 z-50 transition-opacity duration-300 ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={toggleMenu}></div>
+        </header>
+    );
+};
+
+// --- Footer copied from index2.html ---
+const Footer = () => (
+    <footer className="bg-gray-900 text-white py-16">
+        <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {/* Company Info */}
+                <div>
+                    <h3 className="text-xl font-semibold mb-4 relative">
+                        MKcode
+                        <span className="absolute -bottom-2 left-0 w-10 h-1 bg-green-500 rounded"></span>
+                    </h3>
+                    <p className="text-gray-400 mb-4">Delivering innovative IT solutions and software development services to help businesses thrive in the digital world.</p>
+                    <div className="flex gap-4">
+                        {['facebook-f', 'twitter', 'linkedin-in', 'instagram'].map(icon => {
+                            let url = '#';
+                            if (icon === 'facebook-f') url = 'https://facebook.com';
+                            if (icon === 'twitter') url = 'https://twitter.com';
+                            if (icon === 'linkedin-in') url = 'https://linkedin.com';
+                            if (icon === 'instagram') url = 'https://instagram.com';
+                            return (
+                                <a key={icon} href={url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-green-500 hover:text-white transition-all shadow-2xl hover:scale-110 transform-gpu hover:rotate-6 hover:shadow-green-400/60 duration-300">
+                                    <i className={`fab fa-${icon} text-lg`}></i>
+                                </a>
+                            );
+                        })}
+                    </div>
+                </div>
+                {/* Quick Links */}
+                <div>
+                    <h3 className="text-xl font-semibold mb-4 relative">
+                        Quick Links
+                        <span className="absolute -bottom-2 left-0 w-10 h-1 bg-green-500 rounded"></span>
+                    </h3>
+                    {['Home', 'About Us', 'Services', 'Portfolio', 'Careers', 'Contact'].map((link, i) => {
+                        let href = 'index2.html#home';
+                        if (link === 'About Us') href = 'index2.html#about';
+                        if (link === 'Services') href = 'services.html';
+                        if (link === 'Portfolio') href = 'index2.html#portfolio';
+                        if (link === 'Careers') href = 'index2.html#careers';
+                        if (link === 'Contact') href = 'index2.html#contact';
+                        return (
+                            <a key={link} href={href} className="block text-gray-400 hover:text-green-500 mb-2 font-medium transition-colors pl-2 hover:pl-4 duration-300 relative group">
+                                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-green-500 rounded-full shadow-lg opacity-0 group-hover:opacity-100 group-hover:left-[-12px] transition-all duration-300"></span>
+                                <i className="fas fa-check mr-2 text-green-500 drop-shadow"></i>{link}
+                            </a>
+                        );
+                    })}
+                </div>
+                {/* Contact Us */}
+                <div>
+                    <h3 className="text-xl font-semibold mb-4 relative">
+                        Contact Us
+                        <span className="absolute -bottom-2 left-0 w-10 h-1 bg-green-500 rounded"></span>
+                    </h3>
+                    <div className="text-gray-400 mb-2 flex items-center"><i className="fas fa-map-marker-alt mr-2"></i>123 Tech Street, Silicon Valley CA 94043</div>
+                    <div className="text-gray-400 mb-2 flex items-center"><i className="fas fa-envelope mr-2"></i><a href="mailto:abdulmabudkhan42@gmail.com" className="hover:text-green-400">abdulmabudkhan42@gmail.com</a></div>
+                    <div className="text-gray-400 mb-2 flex items-center"><i className="fas fa-phone-alt mr-2"></i><a href="tel:+918116752298" className="hover:text-green-400">+91 8116752298</a></div>
+                </div>
+                {/* Empty for grid balance or future use */}
+                <div></div>
+            </div>
+            <div className="border-t border-gray-800 pt-8 mt-8 text-center text-gray-400 flex flex-col gap-2">
+                <div>
+                    &copy; 2025 MKcode. All rights reserved.
+                </div>
+                <div className="flex justify-center gap-3 text-sm">
+                    <a href="#" className="hover:text-green-500 transition-colors hover:scale-110 hover:drop-shadow-lg duration-300">Privacy Policy</a>
+                    <span>|</span>
+                    <a href="#" className="hover:text-green-500 transition-colors hover:scale-110 hover:drop-shadow-lg duration-300">Terms of Service</a>
+                    <span>|</span>
+                    <a href="#" className="hover:text-green-500 transition-colors hover:scale-110 hover:drop-shadow-lg duration-300">Cookie Policy</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+);
+
+const services = [
+  {
+    icon: 'fa-laptop-code',
+    title: 'Web Development',
+    short: 'Custom web applications and responsive websites.',
+    detail: 'We build robust, scalable, and modern web applications using the latest frameworks and technologies, tailored to your business needs.'
+  },
+  {
+    icon: 'fa-mobile-alt',
+    title: 'Mobile App Development',
+    short: 'Native and cross-platform mobile apps.',
+    detail: 'Our team creates high-performance mobile apps for iOS and Android, ensuring seamless user experience and integration.'
+  },
+  {
+    icon: 'fa-paint-brush',
+    title: 'UI/UX Design',
+    short: 'User-centered design solutions.',
+    detail: 'We deliver intuitive and visually appealing interfaces, focusing on usability and engagement for your digital products.'
+  },
+  {
+    icon: 'fa-cloud',
+    title: 'Cloud Solutions',
+    short: 'Cloud infrastructure and migration.',
+    detail: 'From cloud migration to scalable infrastructure setup, we help you leverage the power of AWS, Azure, and Google Cloud.'
+  },
+  {
+    icon: 'fa-database',
+    title: 'Database Management',
+    short: 'Design, optimization, and maintenance.',
+    detail: 'Our experts design, optimize, and maintain secure databases, ensuring data integrity and high availability.'
+  },
+  {
+    icon: 'fa-shield-alt',
+    title: 'Cybersecurity',
+    short: 'Protect your digital assets and data.',
+    detail: 'We provide end-to-end cybersecurity services, including audits, penetration testing, and threat monitoring.'
+  },
+  {
+    icon: 'fa-network-wired',
+    title: 'Network Solutions',
+    short: 'Secure and scalable networks.',
+    detail: 'We design and implement reliable network architectures, including VPNs, firewalls, and wireless solutions.'
+  },
+  {
+    icon: 'fa-robot',
+    title: 'AI & Machine Learning',
+    short: 'Automate and gain insights.',
+    detail: 'Integrate AI and ML to automate processes, analyze data, and unlock new business opportunities.'
+  },
+  {
+    icon: 'fa-chart-line',
+    title: 'Data Analytics',
+    short: 'Business intelligence and analytics.',
+    detail: 'We turn your data into actionable insights with advanced analytics, dashboards, and reporting.'
+  },
+  {
+    icon: 'fa-cogs',
+    title: 'DevOps & Automation',
+    short: 'CI/CD pipelines and automation.',
+    detail: 'Accelerate development with automated pipelines, infrastructure as code, and continuous deployment.'
+  },
+  {
+    icon: 'fa-server',
+    title: 'Server Management',
+    short: 'On-premise and cloud server management.',
+    detail: 'We handle server setup, monitoring, patching, and scaling for maximum uptime and security.'
+  },
+  {
+    icon: 'fa-code-branch',
+    title: 'API Development',
+    short: 'RESTful and GraphQL APIs.',
+    detail: 'We design and build secure, scalable APIs for seamless integration between your systems and third parties.'
+  },
+  {
+    icon: 'fa-shopping-cart',
+    title: 'E-commerce Solutions',
+    short: 'Online stores and payment integration.',
+    detail: 'Launch your online business with custom e-commerce platforms, payment gateways, and analytics.'
+  },
+  {
+    icon: 'fa-search',
+    title: 'SEO & Digital Marketing',
+    short: 'Boost your online presence.',
+    detail: 'Grow your reach with SEO, SEM, content marketing, and social media strategies.'
+  },
+  {
+    icon: 'fa-users',
+    title: 'IT Consulting',
+    short: 'Expert advice and strategy.',
+    detail: 'Get guidance on IT strategy, digital transformation, and technology adoption from our consultants.'
+  },
+  {
+    icon: 'fa-sync-alt',
+    title: 'System Integration',
+    short: 'Seamless integration of systems.',
+    detail: 'We connect your software, hardware, and cloud systems for smooth data flow and operations.'
+  },
+  {
+    icon: 'fa-bug',
+    title: 'QA & Testing',
+    short: 'Manual and automated testing.',
+    detail: 'Ensure software quality with comprehensive testing, bug tracking, and performance analysis.'
+  },
+  {
+    icon: 'fa-graduation-cap',
+    title: 'IT Training',
+    short: 'Workshops and training sessions.',
+    detail: 'Upskill your team with hands-on training in development, security, and cloud technologies.'
+  },
+  {
+    icon: 'fa-globe',
+    title: 'Web Hosting',
+    short: 'Reliable and secure hosting.',
+    detail: 'We offer managed web hosting with high uptime, security, and support.'
+  },
+  {
+    icon: 'fa-lock',
+    title: 'Compliance & Auditing',
+    short: 'Meet industry standards.',
+    detail: 'We help you achieve and maintain compliance with GDPR, HIPAA, PCI DSS, and more.'
+  },
+  {
+    icon: 'fa-bitcoin',
+    title: 'Blockchain Solutions',
+    short: 'Decentralized apps and smart contracts.',
+    detail: 'Build secure blockchain applications, smart contracts, and crypto integrations.'
+  },
+  {
+    icon: 'fa-cloud-upload-alt',
+    title: 'Backup & Disaster Recovery',
+    short: 'Protect your data and business.',
+    detail: 'Automated backup solutions and disaster recovery planning for business continuity.'
+  },
+  {
+    icon: 'fa-headset',
+    title: 'IT Support & Helpdesk',
+    short: '24/7 support for your business.',
+    detail: 'Our team provides fast, reliable IT support and troubleshooting for all your needs.'
+  },
+  {
+    icon: 'fa-project-diagram',
+    title: 'Project Management',
+    short: 'Agile and traditional project delivery.',
+    detail: 'We manage your IT projects from planning to delivery, ensuring on-time and on-budget results.'
+  },
+];
+
+function Modal({ open, onClose, title, children }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center">
+      <div className="bg-white rounded-xl p-8 max-w-lg w-full mx-4 relative animate-fade-in-up">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-700">
+          <i className="fas fa-times"></i>
+        </button>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">{title}</h2>
+        <div className="text-gray-600">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function ServicePage() {
+  const [modal, setModal] = useState({ open: false, idx: null });
+  return (
+    <main className="container mx-auto px-4 py-16">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-500 via-blue-500 to-green-400 drop-shadow-lg animate-fade-in-up">Our IT Services</h1>
+        <p className="text-gray-600 max-w-2xl mx-auto text-lg mt-4 animate-fade-in-up">Explore our comprehensive range of IT services designed to help your business grow and succeed in the digital world.</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 animate-fade-in-up">
+        {services.map((service, i) => (
+          <div key={i} className="bg-white rounded-3xl shadow-2xl p-8 flex flex-col items-center text-center hover:scale-105 transition-all relative group">
+            <i className={`fas ${service.icon} text-4xl text-green-500 mb-4 group-hover:text-blue-500 transition-colors`}></i>
+            <h3 className="text-xl font-bold mb-2 bg-gradient-to-r from-green-500 to-blue-500 bg-clip-text text-transparent drop-shadow animate-fade-in-up">{service.title}</h3>
+            <p className="text-gray-600 mb-4 animate-fade-in-up">{service.short}</p>
+            <button onClick={() => setModal({ open: true, idx: i })} className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold shadow-lg hover:from-blue-500 hover:to-green-500 hover:scale-105 transition-all animate-float">
+              Learn more <i className="fas fa-arrow-right"></i>
+            </button>
+            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-24 h-6 bg-green-400/20 blur-lg rounded-full opacity-60 group-hover:opacity-80 group-hover:scale-110 transition-all"></div>
+          </div>
+        ))}
+      </div>
+      <div className="text-center mt-16">
+        <a href="index2.html#contact" className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-10 py-4 rounded-full shadow-xl hover:from-blue-500 hover:to-green-500 hover:scale-105 transition-all text-xl font-bold">Contact Us for Custom Solutions</a>
+      </div>
+      <Modal open={modal.open} onClose={() => setModal({ open: false, idx: null })} title={modal.idx !== null ? services[modal.idx].title : ''}>
+        {modal.idx !== null && <>
+          <p>{services[modal.idx].detail}</p>
+        </>}
+      </Modal>
+    </main>
+  );
+}
+
+const App = () => (
+    <div className="font-sans">
+        <Header />
+        <ServicePage />
+        <Footer />
+    </div>
+);
+
+ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
