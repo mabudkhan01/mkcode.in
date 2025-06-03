@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.4/babel.min.js"></script>
     <style>
-        /* ...existing code from index2.html... */
+        /* ...existing code from index.html... */
     </style>
 </head>
 <body>
@@ -18,7 +18,7 @@
     <script type="text/babel">
 const { useState, useEffect } = React;
 
-// --- Header and Footer copied from index2.html ---
+// --- Header and Footer copied from index.html ---
 // Header
 const API_BASE = 'http://localhost:5000/api';
 function saveToken(token) { localStorage.setItem('jwt', token); }
@@ -72,18 +72,18 @@ const Header = () => {
     };
 
     const navItems = [
-        { href: "index2.html#home", label: "Home" },
-        { href: "index2.html#about", label: "About" },
-        { href: "index2.html#services", label: "Services" },
-        { href: "index2.html#portfolio", label: "Portfolio" },
-        { href: "index2.html#careers", label: "Careers" },
-        { href: "index2.html#contact", label: "Contact" },
+        { href: "index.html#home", label: "Home" },
+        { href: "index.html#about", label: "About" },
+        { href: "index.html#services", label: "Services" },
+        { href: "index.html#portfolio", label: "Portfolio" },
+        { href: "index.html#careers", label: "Careers" },
+        { href: "index.html#contact", label: "Contact" },
     ];
 
     return (
         <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white/95 shadow-2xl' : 'bg-transparent'}`} style={{backdropFilter:'blur(8px)'}}>
             <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-                <a href="index2.html#home" className="flex items-center space-x-2 group">
+                <a href="index.html#home" className="flex items-center space-x-2 group">
                     <img src="mkcode.jpeg" alt="MKcode Logo" className="w-12 h-12 rounded-full shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300" />
                     <span className="font-extrabold text-2xl text-green-500 tracking-wider drop-shadow-lg group-hover:text-blue-500 transition-colors duration-300">MKcode</span>
                 </a>
@@ -96,7 +96,7 @@ const Header = () => {
                             <span className="absolute left-1/2 -bottom-1 w-0 h-1 bg-gradient-to-r from-green-400 to-blue-400 rounded-full group-hover:w-full transition-all duration-300" style={{transform:'translateX(-50%)'}}></span>
                         </a>
                     ))}
-                    <a href="index2.html#contact" className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-2 rounded-full shadow-lg hover:from-blue-500 hover:to-green-500 hover:scale-105 transition-all transform hover:-translate-y-1 font-bold animate-float">
+                    <a href="index.html#contact" className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-2 rounded-full shadow-lg hover:from-blue-500 hover:to-green-500 hover:scale-105 transition-all transform hover:-translate-y-1 font-bold animate-float">
                         Get Started
                     </a>
                 </nav>
@@ -153,7 +153,7 @@ const Header = () => {
             <div className={`fixed top-0 left-0 h-full w-80 max-w-[90vw] bg-white dark:bg-gray-900 shadow-2xl z-[100] transform transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`} style={{boxShadow:'0 0 40px 0 rgba(0,0,0,0.2)'}}>
                 <div className="p-6 flex flex-col h-full">
                     <div className="flex justify-between items-center mb-8">
-                        <a href="index2.html#home" className="flex items-center space-x-2">
+                        <a href="index.html#home" className="flex items-center space-x-2">
                             <img src="mkcode.jpeg" alt="MKcode Logo" className="w-10 h-10" />
                             <span className="font-bold text-xl text-green-500">MKcode</span>
                         </a>
@@ -235,7 +235,7 @@ const Footer = () => (
                     </h3>
                     {['Web Development', 'Mobile App Development', 'UI/UX Design', 'Cloud Solutions', 'Cybersecurity', 'Database Management'].map(service => (
                         <div key={service}>
-                            <a href="index2.html#services" className="text-gray-400 hover:text-green-400 block mb-2 transition-colors">{service}</a>
+                            <a href="index.html#services" className="text-gray-400 hover:text-green-400 block mb-2 transition-colors">{service}</a>
                         </div>
                     ))}
                 </div>

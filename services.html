@@ -30,7 +30,7 @@ function saveToken(token) { localStorage.setItem('jwt', token); }
 function getToken() { return localStorage.getItem('jwt'); }
 function removeToken() { localStorage.removeItem('jwt'); }
 
-// --- Header with JWT/profile integration (copied from index2.html) ---
+// --- Header with JWT/profile integration (copied from index.html) ---
 const Header = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -78,18 +78,18 @@ const Header = () => {
     };
 
     const navItems = [
-        { href: "index2.html#home", label: "Home" },
-        { href: "index2.html#about", label: "About" },
+        { href: "index.html#home", label: "Home" },
+        { href: "index.html#about", label: "About" },
         { href: "services.html", label: "Services" },
-        { href: "index2.html#portfolio", label: "Portfolio" },
-        { href: "index2.html#careers", label: "Careers" },
-        { href: "index2.html#contact", label: "Contact" },
+        { href: "index.html#portfolio", label: "Portfolio" },
+        { href: "index.html#careers", label: "Careers" },
+        { href: "index.html#contact", label: "Contact" },
     ];
 
     return (
         <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white/95 shadow-2xl' : 'bg-transparent'}`} style={{backdropFilter:'blur(8px)'}}>
             <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-                <a href="index2.html#home" className="flex items-center space-x-2 group">
+                <a href="index.html#home" className="flex items-center space-x-2 group">
                     <img src="mkcode.jpeg" alt="MKcode Logo" className="w-12 h-12 rounded-full shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300" />
                     <span className="font-extrabold text-2xl text-green-500 tracking-wider drop-shadow-lg group-hover:text-blue-500 transition-colors duration-300">MKcode</span>
                 </a>
@@ -102,7 +102,7 @@ const Header = () => {
                             <span className="absolute left-1/2 -bottom-1 w-0 h-1 bg-gradient-to-r from-green-400 to-blue-400 rounded-full group-hover:w-full transition-all duration-300" style={{transform:'translateX(-50%)'}}></span>
                         </a>
                     ))}
-                    <a href="index2.html#contact" className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-2 rounded-full shadow-lg hover:from-blue-500 hover:to-green-500 hover:scale-105 transition-all transform hover:-translate-y-1 font-bold animate-float">
+                    <a href="index.html#contact" className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-2 rounded-full shadow-lg hover:from-blue-500 hover:to-green-500 hover:scale-105 transition-all transform hover:-translate-y-1 font-bold animate-float">
                         Get Started
                     </a>
                 </nav>
@@ -159,7 +159,7 @@ const Header = () => {
             <div className={`fixed top-0 left-0 h-full w-80 max-w-[90vw] bg-white dark:bg-gray-900 shadow-2xl z-[100] transform transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`} style={{boxShadow:'0 0 40px 0 rgba(0,0,0,0.2)'}}>
                 <div className="p-6 flex flex-col h-full">
                     <div className="flex justify-between items-center mb-8">
-                        <a href="index2.html#home" className="flex items-center space-x-2">
+                        <a href="index.html#home" className="flex items-center space-x-2">
                             <img src="mkcode.jpeg" alt="MKcode Logo" className="w-10 h-10" />
                             <span className="font-bold text-xl text-green-500">MKcode</span>
                         </a>
@@ -173,7 +173,7 @@ const Header = () => {
                                 {item.label}
                             </a>
                         ))}
-                        <a href="index2.html#contact" className="bg-green-500 text-white px-6 py-2 rounded-full text-center mt-4 hover:bg-green-600 transition-all" onClick={toggleMenu}>Get Started</a>
+                        <a href="index.html#contact" className="bg-green-500 text-white px-6 py-2 rounded-full text-center mt-4 hover:bg-green-600 transition-all" onClick={toggleMenu}>Get Started</a>
                     </nav>
                     <div className="mt-8 flex gap-4 justify-center">
                         {['facebook-f', 'twitter', 'linkedin-in', 'instagram'].map(icon => (
@@ -190,7 +190,7 @@ const Header = () => {
     );
 };
 
-// --- Footer copied from index2.html ---
+// --- Footer copied from index.html ---
 const Footer = () => (
     <footer className="bg-gray-900 text-white py-16">
         <div className="container mx-auto px-4">
@@ -224,12 +224,12 @@ const Footer = () => (
                         <span className="absolute -bottom-2 left-0 w-10 h-1 bg-green-500 rounded"></span>
                     </h3>
                     {['Home', 'About Us', 'Services', 'Portfolio', 'Careers', 'Contact'].map((link, i) => {
-                        let href = 'index2.html#home';
-                        if (link === 'About Us') href = 'index2.html#about';
+                        let href = 'index.html#home';
+                        if (link === 'About Us') href = 'index.html#about';
                         if (link === 'Services') href = 'services.html';
-                        if (link === 'Portfolio') href = 'index2.html#portfolio';
-                        if (link === 'Careers') href = 'index2.html#careers';
-                        if (link === 'Contact') href = 'index2.html#contact';
+                        if (link === 'Portfolio') href = 'index.html#portfolio';
+                        if (link === 'Careers') href = 'index.html#careers';
+                        if (link === 'Contact') href = 'index.html#contact';
                         return (
                             <a key={link} href={href} className="block text-gray-400 hover:text-green-500 mb-2 font-medium transition-colors pl-2 hover:pl-4 duration-300 relative group">
                                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-green-500 rounded-full shadow-lg opacity-0 group-hover:opacity-100 group-hover:left-[-12px] transition-all duration-300"></span>
@@ -451,7 +451,7 @@ function ServicePage() {
         ))}
       </div>
       <div className="text-center mt-16">
-        <a href="index2.html#contact" className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-10 py-4 rounded-full shadow-xl hover:from-blue-500 hover:to-green-500 hover:scale-105 transition-all text-xl font-bold">Contact Us for Custom Solutions</a>
+        <a href="index.html#contact" className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-10 py-4 rounded-full shadow-xl hover:from-blue-500 hover:to-green-500 hover:scale-105 transition-all text-xl font-bold">Contact Us for Custom Solutions</a>
       </div>
       <Modal open={modal.open} onClose={() => setModal({ open: false, idx: null })} title={modal.idx !== null ? services[modal.idx].title : ''}>
         {modal.idx !== null && <>
