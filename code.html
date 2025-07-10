@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure P2P Communicator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"></script>
+    <style>
+        :root {
+            --primary: #4a6fa5;
+            --secondary: #166088;
+            --accent: #4fc3f7;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--secondary);
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .app-title {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        
+        .connection-panel {
+            background-color: var(--light);
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--danger);
+        }
+        
+        .status-indicator.connected {
+            background-color: var(--success);
+        }
+        
+        .peer-id {
+            font-family: monospace;
+            background-color: #eee;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .connection-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        button.primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button.secondary {
+            background-color: var(--light);
+            border: 1px solid #ddd;
+        }
+
+        button svg {
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+
+        #videoCallBtn, #voiceCallBtn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background-color: white;
+        }
+        
+        .message {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.4;
+            position: relative;
+        }
+        
+        .received {
+            align-self: flex-start;
+            background-color: #f1f1f1;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .sent {
+            align-self: flex-end;
+            background-color: var(--primary);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message-time {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 5px;
+            text-align: right;
+        }
+        
+        .message-input {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            background-color: white;
+        }
+        
+        input, textarea {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            resize: none;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(74, 111, 165, 0.2);
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        
+        .modal.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .modal-title {
+            margin-bottom: 20px;
+            color: var(--dark);
+        }
+        
+        .modal-footer {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .security-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--success);
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .app-container {
+                height: 95vh;
+                border-radius: 0;
+            }
+            
+            header {
+                border-radius: 0;
+            }
+            
+            .message {
+                max-width: 85%;
+            }
+            
+            .connection-controls {
+                width: 100%;
+                justify-content: flex-end;
+                margin-top: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="app-container">
+            <header>
+                <div class="app-title">Secure P2P Communicator</div>
+                <div class="subtitle">End-to-end encrypted peer-to-peer communication</div>
+            </header>
+            
+            <div class="connection-panel">
+                <div class="connection-status">
+                    <div class="status-indicator" id="statusIndicator"></div>
+                    <span id="statusText">Disconnected</span>
+                    <div class="peer-id" id="myPeerId">kjhgfdfyujkmnbvf.kjh65555</div>
+                </div>
+                <div class="connection-controls">
+                    <button class="secondary" id="copyBtn">Copy My ID</button>
+                    <button class="primary" id="connectBtn">Connect to Peer</button>
+                    <button class="primary" id="videoCallBtn" disabled title="Start video call (requires connection)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 7a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2z"></path>
+                            <rect x="1" y="5" width="22" height="14" rx="2" ry="2"></rect>
+                        </svg>
+                        Video Call
+                    </button>
+                    <button class="primary" id="voiceCallBtn" disabled title="Start voice call (requires connection)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                        Voice Call
+                    </button>
+                </div>
+            </div>
+            
+            <div class="chat-container" id="chatContainer">
+                <div class="video-container hidden" id="videoContainer">
+                    <video id="remoteVideo" class="call-video" autoplay muted></video>
+                    <video id="localVideo" class="local-video" autoplay muted></video>
+                    <div class="call-controls hidden" id="callControls">
+                        <button class="primary" id="endCallBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path>
+                                <line x1="23" y1="1" x2="1" y2="23"></line>
+                            </svg>
+                            End Call
+                        </button>
+                    </div>
+                </div>
+                <div class="messages" id="messages">
+                    <div class="security-badge">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        <span>Messages are end-to-end encrypted</span>
+                    </div>
+                    <div class="message received">
+                        <strong>Welcome to Secure P2P Communicator!</strong><br><br>
+                        <strong>How to Connect:</strong>
+                        1. Copy your ID using the "Copy My ID" button<br>
+                        2. Share your ID with the person you want to connect with<br>
+                        3. Paste their ID into the Connect dialog and click Connect<br><br>
+                        Once connected, you can exchange messages or start voice/video calls.
+                        <div class="message-time">System</div>
+                    </div>
+                </div>
+                
+                <div class="message-input">
+                    <textarea id="messageInput" placeholder="Type a message..." rows="1"></textarea>
+                    <button class="primary" id="sendBtn" disabled>Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="connectModal">
+        <div class="modal-content">
+            <h3 class="modal-title">Connect to Peer</h3>
+            <p>Enter the Peer ID you want to connect to:</p>
+            <input type="text" id="peerIdInput" placeholder="Peer ID">
+            <div class="modal-footer">
+                <button class="secondary" id="cancelBtn">Cancel</button>
+                <button class="primary" id="confirmConnectBtn">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Set up WebRTC connection
+        let peer, conn;
+        let myId = '';
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const myPeerId = document.getElementById('myPeerId');
+        const connectBtn = document.getElementById('connectBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const messageInput = document.getElementById('messageInput');
+        const messages = document.getElementById('messages');
+        const connectModal = document.getElementById('connectModal');
+        const peerIdInput = document.getElementById('peerIdInput');
+        const confirmConnectBtn = document.getElementById('confirmConnectBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        
+        // Toggle video container visibility
+        function toggleVideoContainer(show) {
+            const videoContainer = document.getElementById('videoContainer');
+            const chatContainer = document.getElementById('chatContainer');
+            const callControls = document.getElementById('callControls');
+            
+            if (show) {
+                videoContainer.classList.remove('hidden');
+                callControls.classList.remove('hidden');
+                chatContainer.style.display = 'none';
+            } else {
+                videoContainer.classList.add('hidden');
+                callControls.classList.add('hidden'); 
+                chatContainer.style.display = 'flex';
+            }
+        }
+
+        // Initialize the peer
+        function initPeer() {
+            // Create a new peer
+            peer = new SimplePeer({
+                initiator: false,
+                trickle: false,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
+                    ]
+                }
+            });
+            
+            // Use a fixed peer ID
+            myId = "kjhgfdfyujkmnbvf.kjh65555"; // Set the fixed ID
+            myPeerId.textContent = myId; // Display the fixed ID
+            
+            // Set up event listeners
+            peer.on('error', err => {
+                console.error('Peer error:', err);
+                addSystemMessage('Connection error: ' + err.message + '. Please try reconnecting.');
+                updateStatus(false);
+                // Reset connection
+                initPeer();
+            });
+            
+            peer.on('signal', data => {
+                console.log('Signal data:', data);
+                // In a real app, you would send this data to the other peer via a signaling server
+            });
+            
+            peer.on('connect', () => {
+                console.log('Peer connected');
+                addSystemMessage('Successfully connected to peer! You can now exchange messages and make calls.');
+                updateStatus(true);
+                // Enable call buttons
+                document.getElementById('videoCallBtn').disabled = false;
+                document.getElementById('voiceCallBtn').disabled = false;
+            });
+            
+            peer.on('close', () => {
+                console.log('Peer disconnected');
+                addSystemMessage('Connection ended. Call and message
